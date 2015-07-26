@@ -1,0 +1,120 @@
+---
+title: "MachineLearning_project"
+output: html_document
+---
+
+## Summary
+
+This project is to be submitted to the Coursera Practical Manchine Learning course
+
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases. 
+
+## Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har
+
+
+## Data 
+
+
+The training data for this project are available here: 
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here: 
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. 
+
+## Processing
+
+## read data
+```{r read data} 
+training <- read.csv(file = "pml-training.csv", sep = ",", header = TRUE)
+testing <- read.csv( "pml-testing.csv", sep = ",", header = TRUE)
+``` 
+## data slicing
+```{r data slicing}
+train <- createDataPartition(y=training$classe,p = 0.6, list = FALSE)
+trainew <- training [train,]
+testnew <-  training [-train,]
+```
+## second data slicing
+```{r second data slicing}
+train2 <- createDataPartition(y=trainew$classe,p = 0.6, list = FALSE)
+trainew2 <- trainew [train2,]
+testnew2 <-  trainew [-train2,]
+```
+## separate numeric variables
+```{r separate numeric variables}
+num <- sapply( trainew2, is.numeric)
+trainNum <- trainew2[,num==TRUE]
+trainNotNum <- trainew2[,num==FALSE]
+```
+## eliminate correlated variables and other
+
+Now we eliminate varianle that have more thatn 80 % of correlation, near Zero variables and variables that have more thant 80 % of missing values
+```{r eliminate variables }
+M <- abs(cor(trainNum, use = "complete.obs"))
+diag(M) <- 0
+m <- which(M > 0.8, arr.ind = T)
+n <- m[,1]
+t1 <- trainNum[,-n]
+tr <- cbind(t1, trainNotNum)
+nzv <- nearZeroVar(tr)
+tr <- tr[,-nzv]
+tx <- which(sapply(tr, function(x) sum(is.na(x))/length(x)) > 0.8)
+tr <- tr[,-tx]
+```
+
+Based on advices from from Tanya M. Riseman and Patricia Ellen Tressel I revised the variables and decided to exclude  X, raw_timestamp_part_1,raw_timestamp_part_2 , num_winddow and user_name.
+
+```{r eliminate unecessary variables}
+tr <- tr[,-c(1:4,35:36)]
+```
+## create Model
+
+It was decided to work with a Random Forest model as long there is no need for cross-validation or a separate test set to get an unbiased estimate of the test set error. 
+
+```{r create model}
+modelrf <- train( classe~., data = tr, model = "rf")
+modelrf
+modelrf$finalModel
+```
+
+The model has an accuracy of 0.9564871 and the confusionMatrix shows a perfect fit
+
+## transform test data
+```{r transform test data and do a prediction }
+name <- names(tr)
+teste <-testnew2[,name]
+predtest <- predict( modelrf, newdata = teste)
+confusionMatrix( predtest, teste$classe)
+```
+## apply test on trainNew and testnew
+```{r apply test on trainNew and testnew}
+predtrainnew <- predict (modelrf,trainew)
+confusionMatrix(predtrainnew, trainew$classe)
+predtestnew <- predict (modelrf,testnew)
+confusionMatrix(predtestnew, testnew$classe)
+```
+## apply on training  dataset
+```{r apply on training  dataset}
+predtraining <- predict (modelrf,training)
+confusionMatrix(predtraining, training$classe)
+```
+
+We may observe in all confusionMatrix that the model has a perfect fit
+
+## apply model on testing and create answers variable and aftewards write the files to worksppace for submission
+```{r apply model on testing and create answers variable and aftewrds write the files to worksppace for submission}
+answers <- predict ( modelrf, testing)
+answers
+```
+
+## Credits
+
+I'd like to register my sincere appreciation for Tanya M. Riseman ,  Patricia Ellen Tressel  and Ronny Restrepo for their assistance in the Discussion Forums
+
+Thanks
